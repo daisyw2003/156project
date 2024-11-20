@@ -8,15 +8,9 @@ format:
         geometry: margin=.5in
 ---
 
+```{r}
 library(haven)
-table_A1 <- read_dta("table_A1.dta")
-View(table_A1)
-
-
+table_A1 <- read_dta("table_A1.dta") 
 table_5 <- read_dta("table_5.dta")
-View(table_5)
-
-
-aej_maindata <- read_dta("Downloads/156 replication/aej_maindata.dta")
-View(aej_maindata)
-
+aej_maindata <- read_dta("aej_maindata.dta") 
+```
