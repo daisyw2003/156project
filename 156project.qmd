@@ -1,6 +1,11 @@
 ---
 title: "156project"
-format: html
+format:
+  pdf:
+        fontsize: 10pt
+        fig_width: 6in
+        fig_height: 4in
+        geometry: margin=.5in
 ---
 
 ## Quarto
