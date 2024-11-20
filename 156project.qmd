@@ -1,25 +1,17 @@
 ---
 title: "156project"
-format: html
+format: pdf
 ---
 
-## Quarto
+library(haven)
+table_A1 <- read_dta("table_A1.dta")
+View(table_A1)
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
 
-## Running Code
+table_5 <- read_dta("table_5.dta")
+View(table_5)
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
 
-```{r}
-1 + 1
-```
+aej_maindata <- read_dta("Downloads/156 replication/aej_maindata.dta")
+View(aej_maindata)
 
-You can add options to executable code like this
-
-```{r}
-#| echo: false
-2 * 2
-```
-
-The `echo: false` option disables the printing of code (only output is displayed).
