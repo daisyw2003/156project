@@ -14,3 +14,168 @@ table_A1 <- read_dta("table_A1.dta")
 table_5 <- read_dta("table_5.dta")
 aej_maindata <- read_dta("aej_maindata.dta") 
 ```
+
+
+```{r}
+library(AER)       # For ivreg
+library(sandwich)  # For robust standard errors
+
+# Define variables
+dependent_vars <- c("lngini_w", "lngini_b", "povrate_w", "povrate_b")
+control_sets <- list(
+  "count1920" = c("lenper", "count1920"),
+  "black1920" = c("lenper", "black1920"),
+  "ctyliterate1920" = c("lenper", "ctyliterate1920"),
+  "ctymanuf_wkrs1920" = c("lenper", "ctymanuf_wkrs1920"),
+  "lfp1920" = c("lenper", "lfp1920"),
+  "herfscore" = c("lenper", "herfscore")
+)
+
+# Instrumental variable
+instrument <- "herf"
+
+# Store models
+models <- list()
+
+for (dep_var in dependent_vars) {
+  for (control_name in names(control_sets)) {
+    controls <- control_sets[[control_name]]
+    control_formula <- paste(controls, collapse = " + ")
+    
+    # Define formula
+    formula <- as.formula(
+      paste(dep_var, "~ dism1990 +", control_formula, "|", control_formula, "+", instrument)
+    )
+    
+    
+    model <- ivreg(formula, data = aej_maindata)
+    model_name <- paste(dep_var, control_name, sep = "_")
+    models[[model_name]] <- model
+    
+    print(model)
+    summary(models[[model_name]])
+  }
+}
+
+
+```
+
+```{r}
+library(AER)       # For ivreg
+library(sandwich)  # For robust standard errors
+
+# Dependent variable: lngini_w
+model_lngini_w_count1920 <- ivreg(
+  lngini_w ~ dism1990 + lenper + count1920 | lenper + count1920 + herf,
+  data = aej_maindata
+)
+model_lngini_w_black1920 <- ivreg(
+  lngini_w ~ dism1990 + lenper + black1920 | lenper + black1920 + herf,
+  data = aej_maindata
+)
+model_lngini_w_ctyliterate1920 <- ivreg(
+  lngini_w ~ dism1990 + lenper + ctyliterate1920 | lenper + ctyliterate1920 + herf,
+  data = aej_maindata
+)
+model_lngini_w_ctymanuf_wkrs1920 <- ivreg(
+  lngini_w ~ dism1990 + lenper + ctymanuf_wkrs1920 | lenper + ctymanuf_wkrs1920 + herf,
+  data = aej_maindata
+)
+model_lngini_w_lfp1920 <- ivreg(
+  lngini_w ~ dism1990 + lenper + lfp1920 | lenper + lfp1920 + herf,
+  data = aej_maindata
+)
+model_lngini_w_herfscore <- ivreg(
+  lngini_w ~ dism1990 + lenper + herfscore | lenper + herfscore + herf,
+  data = aej_maindata
+)
+
+# Dependent variable: lngini_b
+model_lngini_b_count1920 <- ivreg(
+  lngini_b ~ dism1990 + lenper + count1920 | lenper + count1920 + herf,
+  data = aej_maindata
+)
+model_lngini_b_black1920 <- ivreg(
+  lngini_b ~ dism1990 + lenper + black1920 | lenper + black1920 + herf,
+  data = aej_maindata
+)
+model_lngini_b_ctyliterate1920 <- ivreg(
+  lngini_b ~ dism1990 + lenper + ctyliterate1920 | lenper + ctyliterate1920 + herf,
+  data = aej_maindata
+)
+model_lngini_b_ctymanuf_wkrs1920 <- ivreg(
+  lngini_b ~ dism1990 + lenper + ctymanuf_wkrs1920 | lenper + ctymanuf_wkrs1920 + herf,
+  data = aej_maindata
+)
+model_lngini_b_lfp1920 <- ivreg(
+  lngini_b ~ dism1990 + lenper + lfp1920 | lenper + lfp1920 + herf,
+  data = aej_maindata
+)
+model_lngini_b_herfscore <- ivreg(
+  lngini_b ~ dism1990 + lenper + herfscore | lenper + herfscore + herf,
+  data = aej_maindata
+)
+
+# Dependent variable: povrate_w
+model_povrate_w_count1920 <- ivreg(
+  povrate_w ~ dism1990 + lenper + count1920 | lenper + count1920 + herf,
+  data = aej_maindata
+)
+model_povrate_w_black1920 <- ivreg(
+  povrate_w ~ dism1990 + lenper + black1920 | lenper + black1920 + herf,
+  data = aej_maindata
+)
+model_povrate_w_ctyliterate1920 <- ivreg(
+  povrate_w ~ dism1990 + lenper + ctyliterate1920 | lenper + ctyliterate1920 + herf,
+  data = aej_maindata
+)
+model_povrate_w_ctymanuf_wkrs1920 <- ivreg(
+  povrate_w ~ dism1990 + lenper + ctymanuf_wkrs1920 | lenper + ctymanuf_wkrs1920 + herf,
+  data = aej_maindata
+)
+model_povrate_w_lfp1920 <- ivreg(
+  povrate_w ~ dism1990 + lenper + lfp1920 | lenper + lfp1920 + herf,
+  data = aej_maindata
+)
+model_povrate_w_herfscore <- ivreg(
+  povrate_w ~ dism1990 + lenper + herfscore | lenper + herfscore + herf,
+  data = aej_maindata
+)
+
+# Dependent variable: povrate_b
+model_povrate_b_count1920 <- ivreg(
+  povrate_b ~ dism1990 + lenper + count1920 | lenper + count1920 + herf,
+  data = aej_maindata
+)
+model_povrate_b_black1920 <- ivreg(
+  povrate_b ~ dism1990 + lenper + black1920 | lenper + black1920 + herf,
+  data = aej_maindata
+)
+model_povrate_b_ctyliterate1920 <- ivreg(
+  povrate_b ~ dism1990 + lenper + ctyliterate1920 | lenper + ctyliterate1920 + herf,
+  data = aej_maindata
+)
+model_povrate_b_ctymanuf_wkrs1920 <- ivreg(
+  povrate_b ~ dism1990 + lenper + ctymanuf_wkrs1920 | lenper + ctymanuf_wkrs1920 + herf,
+  data = aej_maindata
+)
+model_povrate_b_lfp1920 <- ivreg(
+  povrate_b ~ dism1990 + lenper + lfp1920 | lenper + lfp1920 + herf,
+  data = aej_maindata
+)
+model_povrate_b_herfscore <- ivreg(
+  povrate_b ~ dism1990 + lenper + herfscore | lenper + herfscore + herf,
+  data = aej_maindata
+)
+
+```
+
+```{r}
+summary(model_lngini_w_count1920)
+summary(model_lngini_b_count1920)
+summary(model_povrate_w_count1920)
+summary(model_povrate_b_count1920)
+
+```
+
+
