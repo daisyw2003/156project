@@ -15,7 +15,6 @@ table_5 <- read_dta("table_5.dta")
 aej_maindata <- read_dta("aej_maindata.dta") 
 ```
 
-
 ```{r}
 library(AER)       # For ivreg
 library(sandwich)  # For robust standard errors
@@ -178,4 +177,149 @@ summary(model_povrate_b_count1920)
 
 ```
 
+**Daisy's Section?**
 
+Table 1—Testing RDI as an Instrument
+
+```{r}
+library(lmtest)
+library(sandwich)
+
+# Assuming your data is stored in a data.frame called 'aej_maindata'
+
+# Table 1, OLS regressions with robust standard errors
+reg1 <- lm(dism1990 ~ herf + lenper, data = aej_maindata)
+coeftest(reg1, vcov = vcovHC(reg1, type = "HC1"))
+
+reg2 <- lm(area1910/1000 ~ herf + lenper, data = aej_maindata)
+coeftest(reg2, vcov = vcovHC(reg2, type = "HC1"))
+
+reg3 <- lm(count1910/1000 ~ herf + lenper, data = aej_maindata)
+coeftest(reg3, vcov = vcovHC(reg3, type = "HC1"))
+
+reg4 <- lm(ethseg10 ~ herf + lenper, data = aej_maindata)
+coeftest(reg4, vcov = vcovHC(reg4, type = "HC1"))
+
+reg5 <- lm(ethiso10 ~ herf + lenper, data = aej_maindata)
+coeftest(reg5, vcov = vcovHC(reg5, type = "HC1"))
+
+reg6 <- lm(black1910 ~ herf + lenper, data = aej_maindata)
+coeftest(reg6, vcov = vcovHC(reg6, type = "HC1"))
+
+reg7 <- lm(passpc/1000 ~ herf + lenper, data = aej_maindata)
+coeftest(reg7, vcov = vcovHC(reg7, type = "HC1"))
+
+reg8 <- lm(black1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg8, vcov = vcovHC(reg8, type = "HC1"))
+
+reg9 <- lm(ctyliterate1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg9, vcov = vcovHC(reg9, type = "HC1"))
+
+reg10 <- lm(lfp1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg10, vcov = vcovHC(reg10, type = "HC1"))
+
+reg11 <- lm(ctytrade_wkrs1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg11, vcov = vcovHC(reg11, type = "HC1"))
+
+reg12 <- lm(ctymanuf_wkrs1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg12, vcov = vcovHC(reg12, type = "HC1"))
+
+reg13 <- lm(ctyrail_wkrs1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg13, vcov = vcovHC(reg13, type = "HC1"))
+
+reg14 <- lm(incseg ~ herf + lenper, data = aej_maindata)
+coeftest(reg14, vcov = vcovHC(reg14, type = "HC1"))
+
+```
+
+Table 2—The Effects of Segregation on Poverty and Inequality among Blacks and Whites
+
+```{r}
+library(AER)
+library(lmtest)
+library(sandwich)
+
+#Within-race poverty and inequality Gini index (1st row and 1-2 col of the table)
+reg_lngini_w <- lm(lngini_w ~ dism1990, data = aej_maindata)
+coeftest(reg_lngini_w, vcov = vcovHC(reg_lngini_w, type = "HC1"))
+
+reg_lngini_b <- lm(lngini_b ~ dism1990, data = aej_maindata)
+coeftest(reg_lngini_b, vcov = vcovHC(reg_lngini_b, type = "HC1"))
+
+#Poverty rate (2nd row, col 1-2)
+reg_povrate_w <- lm(povrate_w ~ dism1990, data = aej_maindata)
+coeftest(reg_povrate_w, vcov = vcovHC(reg_povrate_w, type = "HC1"))
+
+reg_povrate_b <- lm(povrate_b ~ dism1990, data = aej_maindata)
+coeftest(reg_povrate_b, vcov = vcovHC(reg_povrate_b, type = "HC1"))
+```
+
+```{r}
+# Table 2, Panel 1 - IV regressions
+ivreg1 <- ivreg(lngini_w ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg1, robust = TRUE)
+
+ivreg2 <- ivreg(lngini_b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg2, robust = TRUE)
+
+ivreg3 <- ivreg(povrate_w ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg3, robust = TRUE)
+
+ivreg4 <- ivreg(povrate_b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg4, robust = TRUE)
+
+# Table 2, Panel 1 (Subset)
+reg15 <- lm(lngini_w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg15, vcov = vcovHC(reg15, type = "HC1"))
+
+reg16 <- lm(lngini_b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg16, vcov = vcovHC(reg16, type = "HC1"))
+
+reg17 <- lm(povrate_w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg17, vcov = vcovHC(reg17, type = "HC1"))
+
+reg18 <- lm(povrate_b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg18, vcov = vcovHC(reg18, type = "HC1"))
+
+```
+
+```{r}
+# Table 2, Panel 2 - OLS regressions
+reg19 <- lm(ln90w90b ~ dism1990, data = aej_maindata)
+coeftest(reg19, vcov = vcovHC(reg19, type = "HC1"))
+
+reg20 <- lm(ln10w10b ~ dism1990, data = aej_maindata)
+coeftest(reg20, vcov = vcovHC(reg20, type = "HC1"))
+
+reg21 <- lm(ln90w10b ~ dism1990, data = aej_maindata)
+coeftest(reg21, vcov = vcovHC(reg21, type = "HC1"))
+
+reg22 <- lm(ln90b10w ~ dism1990, data = aej_maindata)
+coeftest(reg22, vcov = vcovHC(reg22, type = "HC1"))
+
+# Table 2, Panel 2 - IV regressions
+ivreg5 <- ivreg(ln90w90b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg5, robust = TRUE)
+
+ivreg6 <- ivreg(ln10w10b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg6, robust = TRUE)
+
+ivreg7 <- ivreg(ln90w10b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg7, robust = TRUE)
+
+ivreg8 <- ivreg(ln90b10w ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg8, robust = TRUE)
+
+# Table 2, Panel 2 (Subset condition)
+reg23 <- lm(ln90w90b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg23, vcov = vcovHC(reg23, type = "HC1"))
+
+reg24 <- lm(ln10w10b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg24, vcov = vcovHC(reg24, type = "HC1"))
+
+reg25 <- lm(ln90w10b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg25, vcov = vcovHC(reg25, type = "HC1"))
+
+reg26 <- lm(ln90b10w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg26, vcov = vcovHC(reg26, type = "HC1"))
+```
