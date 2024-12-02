@@ -356,3 +356,96 @@ stargazer(
 
 
 ```
+
+
+
+
+
+```{r}
+# Loading data for DR estimation
+library(AER)
+library(lmtest)
+library(sandwich)
+library(tidyverse)
+library(haven)
+aej_maindata <- read_dta("aej_maindata.dta")
+```
+
+
+```{r}
+
+### Step 1: Propensity Score Model (IPW Part)
+
+# Estimate propensity scores using a logistic regression model
+propensity_model <- glm(
+  dism1990_binary ~ lenper, 
+  family = binomial(link = "logit"), 
+  data = aej_maindata
+)
+
+# Predict propensity scores
+aej_maindata$propensity_score <- predict(propensity_model, type = "response")
+
+# Prevent extreme propensity scores to avoid large weights
+epsilon <- 1e-5
+aej_maindata$propensity_score <- pmax(pmin(aej_maindata$propensity_score, 1 - epsilon), epsilon)
+
+# Calculate IPW weights based on propensity scores
+aej_maindata$ipw_weights <- ifelse(
+  aej_maindata$dism1990_binary == 1,
+  1 / aej_maindata$propensity_score,
+  1 / (1 - aej_maindata$propensity_score)
+)
+
+# Check the distribution of the IPW weights
+summary(aej_maindata$ipw_weights)
+hist(aej_maindata$ipw_weights, main = "Distribution of IPW Weights", xlab = "IPW Weights")
+
+### Step 2: Doubly Robust Estimation Function
+
+# Define a function for DR estimation
+doubly_robust_estimation <- function(outcome_var) {
+  
+  # Outcome Regression (OR) model including covariate lenper
+  outcome_formula <- as.formula(paste(outcome_var, "~ dism1990 + lenper"))
+  outcome_model <- lm(outcome_formula, data = aej_maindata)
+  
+  # Predict outcome based on the OR model
+  aej_maindata[[paste0("outcome_prediction_", outcome_var)]] <- predict(outcome_model)
+  
+  # Calculate the DR outcome by combining OR predictions and IPW-adjusted residuals
+  aej_maindata[[paste0("dr_outcome_", outcome_var)]] <- aej_maindata[[paste0("outcome_prediction_", outcome_var)]] +
+    aej_maindata$ipw_weights * (aej_maindata[[outcome_var]] - aej_maindata[[paste0("outcome_prediction_", outcome_var)]])
+  
+  # Regression of the DR-adjusted outcome on the treatment indicator
+  dr_formula <- as.formula(paste(paste0("dr_outcome_", outcome_var), "~ dism1990"))
+  dr_model <- lm(dr_formula, data = aej_maindata)
+  
+  # Return model summary with heteroskedasticity-robust standard errors
+  coeftest(dr_model, vcov = vcovHC(dr_model, type = "HC1"))
+}
+
+### Step 3: Apply DR Estimation for All Dependent Variables
+
+# List of dependent variables for DR estimation
+dependent_vars <- c(
+  "lngini_w", "lngini_b", "povrate_w", "povrate_b",
+  "ln90w90b", "ln10w10b", "ln90w10b", "ln90b10w"
+)
+
+# Run DR estimation for each dependent variable using lapply
+dr_results <- lapply(dependent_vars, doubly_robust_estimation)
+
+# Assign names to the results for easy identification
+names(dr_results) <- c(
+  "DR_lngini_w", "DR_lngini_b", 
+  "DR_povrate_w", "DR_povrate_b",
+  "DR_ln90w90b", "DR_ln10w10b", 
+  "DR_ln90w10b", "DR_ln90b10w"
+)
+
+### Step 4: Display DR Estimation Results
+dr_results
+
+```
+
