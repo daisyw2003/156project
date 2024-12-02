@@ -425,7 +425,11 @@ doubly_robust_estimation <- function(outcome_var) {
 }
 
 # Run DR estimation for each dependent variable using lapply
-dr_results <- lapply(dependent_vars, doubly_robust_estimation)
+# DR Estimation for All Dependent Variables
+dr_results <- lapply(c(
+  "lngini_w", "lngini_b", "povrate_w", "povrate_b",
+  "ln90w90b", "ln10w10b", "ln90w10b", "ln90b10w"
+), doubly_robust_estimation)
 
 # Assign names to the results for easy identification
 names(dr_results) <- c(
