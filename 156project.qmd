@@ -15,53 +15,10 @@ table_5 <- read_dta("table_5.dta")
 aej_maindata <- read_dta("aej_maindata.dta") 
 ```
 
-```{r}
-library(AER)       # For ivreg
-library(sandwich)  # For robust standard errors
 
-# Define variables
-dependent_vars <- c("lngini_w", "lngini_b", "povrate_w", "povrate_b")
-control_sets <- list(
-  "count1920" = c("lenper", "count1920"),
-  "black1920" = c("lenper", "black1920"),
-  "ctyliterate1920" = c("lenper", "ctyliterate1920"),
-  "ctymanuf_wkrs1920" = c("lenper", "ctymanuf_wkrs1920"),
-  "lfp1920" = c("lenper", "lfp1920"),
-  "herfscore" = c("lenper", "herfscore")
-)
-
-# Instrumental variable
-instrument <- "herf"
-
-# Store models
-models <- list()
-
-for (dep_var in dependent_vars) {
-  for (control_name in names(control_sets)) {
-    controls <- control_sets[[control_name]]
-    control_formula <- paste(controls, collapse = " + ")
-    
-    # Define formula
-    formula <- as.formula(
-      paste(dep_var, "~ dism1990 +", control_formula, "|", control_formula, "+", instrument)
-    )
-    
-    
-    model <- ivreg(formula, data = aej_maindata)
-    model_name <- paste(dep_var, control_name, sep = "_")
-    models[[model_name]] <- model
-    
-    print(model)
-    summary(models[[model_name]])
-  }
-}
-
-
-```
 
 ```{r}
 library(AER)       # For ivreg
-library(sandwich)  # For robust standard errors
 
 # Dependent variable: lngini_w
 model_lngini_w_count1920 <- ivreg(
@@ -322,4 +279,80 @@ coeftest(reg25, vcov = vcovHC(reg25, type = "HC1"))
 
 reg26 <- lm(ln90b10w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
 coeftest(reg26, vcov = vcovHC(reg26, type = "HC1"))
+```
+
+```{r}
+sapply(aej_maindata[, c("dism1990_binary", "lenper", "pop1990", "pctbk1990")], function(x) sum(is.na(x)))
+
+```
+
+```{r}
+
+# Define the binary treatment variable
+aej_maindata$dism1990_binary <- as.numeric(aej_maindata$dism1990 > median(aej_maindata$dism1990, na.rm = TRUE))
+
+# Propensity score model
+propensity_model <- glm(
+  dism1990_binary ~ lenper,
+  family = binomial,
+  data = aej_maindata
+)
+
+# Extract propensity scores
+aej_maindata$propensity_score <- predict(propensity_model, type = "response")
+
+
+# IPW weights
+aej_maindata$ipw_weights <- ifelse(
+  aej_maindata$dism1990_binary == 1,
+  1 / aej_maindata$propensity_score,
+  1 / (1 - aej_maindata$propensity_score)
+)
+
+# Check weight distribution
+summary(aej_maindata$ipw_weights)
+hist(aej_maindata$ipw_weights, main = "Distribution of IPW Weights", xlab = "IPW Weights")
+
+```
+
+
+```{r}
+# IPW-weighted regressions
+ipw_gini_w <- lm(lngini_w ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_gini_b <- lm(lngini_b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_povrate_w <- lm(povrate_w ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_povrate_b <- lm(povrate_b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+
+
+ipw_ln90w90b <- lm(ln90w90b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_ln10w10b <- lm(ln10w10b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_ln90w10b <- lm(ln90w10b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_ln90b10w <- lm(ln90b10w ~ dism1990, weights = ipw_weights, data = aej_maindata)
+
+
+```
+
+```{r}
+
+library(stargazer)
+
+# Panel 1: Within-Race Inequality and Poverty
+stargazer(
+  ipw_gini_w, ipw_gini_b, ipw_povrate_w, ipw_povrate_b,
+  title = "Panel 1: IPW Estimates for Within-Race Inequality and Poverty",
+  type = "text",
+  column.labels = c("Gini (Whites)", "Gini (Blacks)", "Poverty (Whites)", "Poverty (Blacks)"),
+  digits = 3
+)
+
+# Panel 2: Between-Race Inequality
+stargazer(
+  ipw_ln90w90b, ipw_ln10w10b, ipw_ln90w10b, ipw_ln90b10w,
+  title = "Panel 2: IPW Estimates for Between-Race Inequality",
+  type = "text",
+  column.labels = c("90:90", "10:10", "90:10 (White:Black)", "90:10 (Black:White)"),
+  digits = 3
+)
+
+
 ```
