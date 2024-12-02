@@ -403,7 +403,6 @@ hist(aej_maindata$ipw_weights, main = "Distribution of IPW Weights", xlab = "IPW
 
 ### Step 2: Doubly Robust Estimation Function
 
-# Define a function for DR estimation
 doubly_robust_estimation <- function(outcome_var) {
   
   # Outcome Regression (OR) model including covariate lenper
@@ -421,17 +420,9 @@ doubly_robust_estimation <- function(outcome_var) {
   dr_formula <- as.formula(paste(paste0("dr_outcome_", outcome_var), "~ dism1990"))
   dr_model <- lm(dr_formula, data = aej_maindata)
   
-  # Return model summary with heteroskedasticity-robust standard errors
-  coeftest(dr_model, vcov = vcovHC(dr_model, type = "HC1"))
+  # Return only the lm object, without any extra processing
+  return(dr_model)
 }
-
-### Step 3: Apply DR Estimation for All Dependent Variables
-
-# List of dependent variables for DR estimation
-dependent_vars <- c(
-  "lngini_w", "lngini_b", "povrate_w", "povrate_b",
-  "ln90w90b", "ln10w10b", "ln90w10b", "ln90b10w"
-)
 
 # Run DR estimation for each dependent variable using lapply
 dr_results <- lapply(dependent_vars, doubly_robust_estimation)
@@ -444,8 +435,19 @@ names(dr_results) <- c(
   "DR_ln90w10b", "DR_ln90b10w"
 )
 
-### Step 4: Display DR Estimation Results
 dr_results
 
+```
+
+
+```{r}
+# Output as a table on stargazer
+library(stargazer)
+
+# Creating a list of regression models for stargazer
+dr_models <- lapply(dependent_vars, doubly_robust_estimation)
+
+# Pass the models to stargazer
+stargazer(dr_models, type = "text", title = "Doubly Robust Estimation Results")
 ```
 
