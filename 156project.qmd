@@ -8,17 +8,244 @@ format:
         geometry: margin=.5in
 ---
 
-```{r}
+```{r, include = FALSE}
+library(lmtest)
 library(haven)
+library(sandwich)  # For robust standard errors
+library(AER)       # For ivreg
+library(sandwich)
+
 table_A1 <- read_dta("table_A1.dta") 
 table_5 <- read_dta("table_5.dta")
 aej_maindata <- read_dta("aej_maindata.dta") 
 ```
 
-```{r}
-library(AER)       # For ivreg
-library(sandwich)  # For robust standard errors
+## **Summarizing the Paper’s Research Question and Its Answer**
 
+The paper *The Wrong Side(s) of the Tracks: The Causal Effects of Racial Segregation on Urban Poverty and Inequality* seeks to explore how residential segregation by race affects the economic inequality between the white and black populations in the United States. While other papers have attempted to measure the effects of segregation, there has been a lot of skepticism about the reliability of the results due to omitted variable bias and endogenous migration.
+
+In this paper, Ananat seeks to remedy the problem of omitted variable bias by instrumenting for a city’s level of segregation by using a city’s railroad configuration. The author presents evidence that supports the choice of instrumentation by showing the requirements necessary for a valid instrument. It is shown to be strongly and robustly to predict metropolitan segregation and does not separately predict confounding metropolitan outcomes. By using this instrument, the paper is able to examine the effect of segregation on a cities’ income distributions by race. 
+
+The paper finds that exogenously increasing segregation causes cities to have African American populations with higher poverty rates and white populations with lower poverty rates. Segregation also increases the inequality between the two populations as it finds that it lowers average outcomes within a city’s black community while reducing inequalities within a city’s white community. 
+
+Finally, the paper seeks to better understand how segregation has led to city-level differences in poverty and inequality by looking at the way migration patterns and youth educational attainment differ according to segregation. This is done to help clarify whether differences in populations are a result of the causal treatment ment effect of segregation on individual-level or on a group-level. The results for this aspect of the paper are not conclusive but are most consistent with the hypothesis that both effect (individual and group) are at work. t are most consistent with the hypothesis that both effect (individual and group) are at work.
+
+## **Datasets Used to Answer the Research Question**
+
+The paper utilizes data from various sources to investigate the effects of racial segregation on urban poverty and inequality.
+
+1.  **U.S. Census Bureau Reports:** These reports provide data on metropolitan demographics. The author uses these reports to gather information on poverty rates, median rent, and crowding, categorized by race.
+
+2.  **Integrated Public Use Microdata Series (IPUMS):** Individual Census microdata from IPUMS.org, covering years from 1890-1940, is incorporated into the analysis. This dataset analyzes individual-level characteristics like income, education, and labor force participation.
+
+3.  **Cutler/Glaeser/Vigdor Segregation Data:** This pre-compiled dataset, made available online by Jacob Vigdor, includes measures of metropolitan segregation from various decades, covering the nineteenth and twentieth centuries. The dataset also contains metropolitan characteristics used in prior research by Cutler and Glaeser (1997) and Cutler, Glaeser, and Vigdor (1999). This data is used to analyze historical trends and compare the study's findings with previous research.
+
+4.  **Nineteenth-Century Maps:** A collection of historical maps from the Harvard Map Library is analyzed to extract information on railroad configurations in 121 cities. These maps, created by the U.S. Geological Survey starting in the 1880s, detail elevation, bodies of water, roads, railroads, and building locations. These maps provide the basis for constructing the Railroad Division Index (RDI), a key variable in the study.
+
+5.  **Proximity to Former Slave States:** The study considers the distance of each city to the nearest former slave state as a proxy for potential demand for segregation during the Great Migration. Cities closer to former slave states experienced more significant inflows of African Americans, potentially increasing the demand for segregation in those areas.
+
+## Summary Statistics Table
+
+{insert here}
+
+## **Replicate the Main Results (Daisy)**
+
+In an ideal situation, we would run an experiment on two initially identical cities in such a way:
+
+1.  At time zero, one city is assigned perfect segregation, the other is assigned perfect integration.
+
+2.  Each city would be randomly assigned black residents from the initial black skill distribution and white residents from the initial white distribution.
+
+3.  The relationship between segregation and the income distribution of the offspring generation would be measured.
+
+4.  Finally, residents would be allowed to move, and aggregate demand for cities (rent, migration) by race and skill would be measured to determine tastes for segregation and its consequences.
+
+However, in reality we will have to approximate this ideal experiment empirically by providing plausibly exogenous variation using our instrumental variables.
+
+In reality, the randomized experiment was approximated by using a measure of a city's railroad-induced potential for segregation denoted "railroad division index" or RDI which quantifies the extent to which the city's land is divided into smaller units.
+
+$$
+RDI = 1 - \sum_i(\frac{area_{neighborhoodi}}{area_{total}})^2
+$$
+
+Another important variable to be captured was the amount of segregation, which is captured by a dissimilarity index defined by:
+
+Index of dissimilarity $= \frac{1}{2}\sum^N_{i=1}|\frac{black_i}{black_{total}} - \frac{nonblack_i}{nonblack_{total}}|$
+
+where $i = 1 ... N$ is the array of census tracts in the area.
+
+With this setup, we can now assume that if RDI-induced segregation is randomly assigned, then we can capture the relationship between segregation and outcomes using a classic endogenous regressor affecting outcomes at the metropolitan statistical area (MSA) level
+
+$$
+Seg = \alpha_1RDI + \alpha_2X + \mu
+$$
+
+$$
+Y = \beta_1Seg + \beta_2X + \epsilon
+$$
+
+where $Seg$ represents an MSA's current level of segregation and $X$ is a vector of control variables that includes total railroad length and other specifications.
+
+Table 1—Testing RDI as an Instrument
+
+```{r echo=FALSE}
+# Table 1, OLS regressions with robust standard errors
+reg1 <- lm(dism1990 ~ herf + lenper, data = aej_maindata)
+coeftest(reg1, vcov = vcovHC(reg1, type = "HC1"))
+
+reg2 <- lm(area1910/1000 ~ herf + lenper, data = aej_maindata)
+coeftest(reg2, vcov = vcovHC(reg2, type = "HC1"))
+
+reg3 <- lm(count1910/1000 ~ herf + lenper, data = aej_maindata)
+coeftest(reg3, vcov = vcovHC(reg3, type = "HC1"))
+
+reg4 <- lm(ethseg10 ~ herf + lenper, data = aej_maindata)
+coeftest(reg4, vcov = vcovHC(reg4, type = "HC1"))
+
+reg5 <- lm(ethiso10 ~ herf + lenper, data = aej_maindata)
+coeftest(reg5, vcov = vcovHC(reg5, type = "HC1"))
+
+reg6 <- lm(black1910 ~ herf + lenper, data = aej_maindata)
+coeftest(reg6, vcov = vcovHC(reg6, type = "HC1"))
+
+reg7 <- lm(passpc/1000 ~ herf + lenper, data = aej_maindata)
+coeftest(reg7, vcov = vcovHC(reg7, type = "HC1"))
+
+reg8 <- lm(black1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg8, vcov = vcovHC(reg8, type = "HC1"))
+
+reg9 <- lm(ctyliterate1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg9, vcov = vcovHC(reg9, type = "HC1"))
+
+reg10 <- lm(lfp1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg10, vcov = vcovHC(reg10, type = "HC1"))
+
+reg11 <- lm(ctytrade_wkrs1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg11, vcov = vcovHC(reg11, type = "HC1"))
+
+reg12 <- lm(ctymanuf_wkrs1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg12, vcov = vcovHC(reg12, type = "HC1"))
+
+reg13 <- lm(ctyrail_wkrs1920 ~ herf + lenper, data = aej_maindata)
+coeftest(reg13, vcov = vcovHC(reg13, type = "HC1"))
+
+reg14 <- lm(incseg ~ herf + lenper, data = aej_maindata)
+coeftest(reg14, vcov = vcovHC(reg14, type = "HC1"))
+
+```
+
+Table 2—The Effects of Segregation on Poverty and Inequality among Blacks and Whites
+
+```{r echo=FALSE}
+#Within-race poverty and inequality Gini index (1st row and 1-2 col of the table)
+reg_lngini_w <- lm(lngini_w ~ dism1990, data = aej_maindata)
+coeftest(reg_lngini_w, vcov = vcovHC(reg_lngini_w, type = "HC1"))
+
+reg_lngini_b <- lm(lngini_b ~ dism1990, data = aej_maindata)
+coeftest(reg_lngini_b, vcov = vcovHC(reg_lngini_b, type = "HC1"))
+
+#Poverty rate (2nd row, col 1-2)
+reg_povrate_w <- lm(povrate_w ~ dism1990, data = aej_maindata)
+coeftest(reg_povrate_w, vcov = vcovHC(reg_povrate_w, type = "HC1"))
+
+reg_povrate_b <- lm(povrate_b ~ dism1990, data = aej_maindata)
+coeftest(reg_povrate_b, vcov = vcovHC(reg_povrate_b, type = "HC1"))
+```
+
+```{r echo=FALSE}
+# Table 2, Panel 1 - IV regressions
+ivreg1 <- ivreg(lngini_w ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg1, robust = TRUE)
+
+ivreg2 <- ivreg(lngini_b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg2, robust = TRUE)
+
+ivreg3 <- ivreg(povrate_w ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg3, robust = TRUE)
+
+ivreg4 <- ivreg(povrate_b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg4, robust = TRUE)
+
+# Table 2, Panel 1 (Subset)
+reg15 <- lm(lngini_w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg15, vcov = vcovHC(reg15, type = "HC1"))
+
+reg16 <- lm(lngini_b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg16, vcov = vcovHC(reg16, type = "HC1"))
+
+reg17 <- lm(povrate_w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg17, vcov = vcovHC(reg17, type = "HC1"))
+
+reg18 <- lm(povrate_b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg18, vcov = vcovHC(reg18, type = "HC1"))
+```
+
+```{r echo=FALSE}
+# Table 2, Panel 2 - OLS regressions
+reg19 <- lm(ln90w90b ~ dism1990, data = aej_maindata)
+coeftest(reg19, vcov = vcovHC(reg19, type = "HC1"))
+
+reg20 <- lm(ln10w10b ~ dism1990, data = aej_maindata)
+coeftest(reg20, vcov = vcovHC(reg20, type = "HC1"))
+
+reg21 <- lm(ln90w10b ~ dism1990, data = aej_maindata)
+coeftest(reg21, vcov = vcovHC(reg21, type = "HC1"))
+
+reg22 <- lm(ln90b10w ~ dism1990, data = aej_maindata)
+coeftest(reg22, vcov = vcovHC(reg22, type = "HC1"))
+
+# Table 2, Panel 2 - IV regressions
+ivreg5 <- ivreg(ln90w90b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg5, robust = TRUE)
+
+ivreg6 <- ivreg(ln10w10b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg6, robust = TRUE)
+
+ivreg7 <- ivreg(ln90w10b ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg7, robust = TRUE)
+
+ivreg8 <- ivreg(ln90b10w ~ dism1990 | herf, data = aej_maindata)
+summary(ivreg8, robust = TRUE)
+
+# Table 2, Panel 2 (Subset condition)
+reg23 <- lm(ln90w90b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg23, vcov = vcovHC(reg23, type = "HC1"))
+
+reg24 <- lm(ln10w10b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg24, vcov = vcovHC(reg24, type = "HC1"))
+
+reg25 <- lm(ln90w10b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg25, vcov = vcovHC(reg25, type = "HC1"))
+
+reg26 <- lm(ln90b10w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
+coeftest(reg26, vcov = vcovHC(reg26, type = "HC1"))
+```
+
+## **Replicate Robustness Checks/Extensions (Sai)**
+
+1.  [Robustness Check: Controlling for 1920 City Characteristics]{.underline}
+
+This robustness check replicates the main two-stage least squares (2SLS) estimates of the effect of segregation on the Gini index and poverty rates while controlling for city characteristics in 1920. This is the period when the Great Migration had just begun.
+
+Controlling for 1920 characteristics helps address a potential concern that characteristics present at the beginning of the Great Migration might confound the relationship between RDI and segregation and, subsequently, between segregation and poverty and inequality. For example, imagine a city with a high RDI with a particularly large or highly-skilled Black population in 1920. The larger Black population might lead to a stronger demand for segregation, and the greater skills might protect the Black population from some of the negative effects of segregation. If those factors were not controlled for, the analysis might understate the effect of RDI-induced segregation on poverty and inequality.
+
+The specific 1920 city characteristics used as controls are:
+
+-   Population: The total population of the city.
+
+-   Percent black: The percentage of the city's population that is Black.
+
+-   Literacy: The percentage of the city's population that is literate.
+
+-   Share employed in manufacturing: The percentage of the city's employment in manufacturing.
+
+-   Labor force participation: The percentage of the city's population in the labor force.
+
+The results of this robustness check show that the estimated effects of segregation on poverty and inequality are highly stable when controlling for these 1920 city characteristics. All estimates remain statistically significant, and their magnitudes are similar to those in the primary analysis.
+
+These findings provide further evidence that RDI is primarily impacting poverty and inequality through segregation and not through some other channel. The results are stable even after accounting for differences in city characteristics present at the beginning of the Great Migration before segregation could have noticeable effects on human capital or city growth.
+
+```{r echo=FALSE}
 # Define variables
 dependent_vars <- c("lngini_w", "lngini_b", "povrate_w", "povrate_b")
 control_sets <- list(
@@ -59,10 +286,7 @@ for (dep_var in dependent_vars) {
 
 ```
 
-```{r}
-library(AER)       # For ivreg
-library(sandwich)  # For robust standard errors
-
+```{r echo=FALSE}
 # Dependent variable: lngini_w
 model_lngini_w_count1920 <- ivreg(
   lngini_w ~ dism1990 + lenper + count1920 | lenper + count1920 + herf,
@@ -175,151 +399,4 @@ summary(model_lngini_b_count1920)
 summary(model_povrate_w_count1920)
 summary(model_povrate_b_count1920)
 
-```
-
-**Daisy's Section?**
-
-Table 1—Testing RDI as an Instrument
-
-```{r}
-library(lmtest)
-library(sandwich)
-
-# Assuming your data is stored in a data.frame called 'aej_maindata'
-
-# Table 1, OLS regressions with robust standard errors
-reg1 <- lm(dism1990 ~ herf + lenper, data = aej_maindata)
-coeftest(reg1, vcov = vcovHC(reg1, type = "HC1"))
-
-reg2 <- lm(area1910/1000 ~ herf + lenper, data = aej_maindata)
-coeftest(reg2, vcov = vcovHC(reg2, type = "HC1"))
-
-reg3 <- lm(count1910/1000 ~ herf + lenper, data = aej_maindata)
-coeftest(reg3, vcov = vcovHC(reg3, type = "HC1"))
-
-reg4 <- lm(ethseg10 ~ herf + lenper, data = aej_maindata)
-coeftest(reg4, vcov = vcovHC(reg4, type = "HC1"))
-
-reg5 <- lm(ethiso10 ~ herf + lenper, data = aej_maindata)
-coeftest(reg5, vcov = vcovHC(reg5, type = "HC1"))
-
-reg6 <- lm(black1910 ~ herf + lenper, data = aej_maindata)
-coeftest(reg6, vcov = vcovHC(reg6, type = "HC1"))
-
-reg7 <- lm(passpc/1000 ~ herf + lenper, data = aej_maindata)
-coeftest(reg7, vcov = vcovHC(reg7, type = "HC1"))
-
-reg8 <- lm(black1920 ~ herf + lenper, data = aej_maindata)
-coeftest(reg8, vcov = vcovHC(reg8, type = "HC1"))
-
-reg9 <- lm(ctyliterate1920 ~ herf + lenper, data = aej_maindata)
-coeftest(reg9, vcov = vcovHC(reg9, type = "HC1"))
-
-reg10 <- lm(lfp1920 ~ herf + lenper, data = aej_maindata)
-coeftest(reg10, vcov = vcovHC(reg10, type = "HC1"))
-
-reg11 <- lm(ctytrade_wkrs1920 ~ herf + lenper, data = aej_maindata)
-coeftest(reg11, vcov = vcovHC(reg11, type = "HC1"))
-
-reg12 <- lm(ctymanuf_wkrs1920 ~ herf + lenper, data = aej_maindata)
-coeftest(reg12, vcov = vcovHC(reg12, type = "HC1"))
-
-reg13 <- lm(ctyrail_wkrs1920 ~ herf + lenper, data = aej_maindata)
-coeftest(reg13, vcov = vcovHC(reg13, type = "HC1"))
-
-reg14 <- lm(incseg ~ herf + lenper, data = aej_maindata)
-coeftest(reg14, vcov = vcovHC(reg14, type = "HC1"))
-
-```
-
-Table 2—The Effects of Segregation on Poverty and Inequality among Blacks and Whites
-
-```{r}
-library(AER)
-library(lmtest)
-library(sandwich)
-
-#Within-race poverty and inequality Gini index (1st row and 1-2 col of the table)
-reg_lngini_w <- lm(lngini_w ~ dism1990, data = aej_maindata)
-coeftest(reg_lngini_w, vcov = vcovHC(reg_lngini_w, type = "HC1"))
-
-reg_lngini_b <- lm(lngini_b ~ dism1990, data = aej_maindata)
-coeftest(reg_lngini_b, vcov = vcovHC(reg_lngini_b, type = "HC1"))
-
-#Poverty rate (2nd row, col 1-2)
-reg_povrate_w <- lm(povrate_w ~ dism1990, data = aej_maindata)
-coeftest(reg_povrate_w, vcov = vcovHC(reg_povrate_w, type = "HC1"))
-
-reg_povrate_b <- lm(povrate_b ~ dism1990, data = aej_maindata)
-coeftest(reg_povrate_b, vcov = vcovHC(reg_povrate_b, type = "HC1"))
-```
-
-```{r}
-# Table 2, Panel 1 - IV regressions
-ivreg1 <- ivreg(lngini_w ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg1, robust = TRUE)
-
-ivreg2 <- ivreg(lngini_b ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg2, robust = TRUE)
-
-ivreg3 <- ivreg(povrate_w ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg3, robust = TRUE)
-
-ivreg4 <- ivreg(povrate_b ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg4, robust = TRUE)
-
-# Table 2, Panel 1 (Subset)
-reg15 <- lm(lngini_w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg15, vcov = vcovHC(reg15, type = "HC1"))
-
-reg16 <- lm(lngini_b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg16, vcov = vcovHC(reg16, type = "HC1"))
-
-reg17 <- lm(povrate_w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg17, vcov = vcovHC(reg17, type = "HC1"))
-
-reg18 <- lm(povrate_b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg18, vcov = vcovHC(reg18, type = "HC1"))
-
-```
-
-```{r}
-# Table 2, Panel 2 - OLS regressions
-reg19 <- lm(ln90w90b ~ dism1990, data = aej_maindata)
-coeftest(reg19, vcov = vcovHC(reg19, type = "HC1"))
-
-reg20 <- lm(ln10w10b ~ dism1990, data = aej_maindata)
-coeftest(reg20, vcov = vcovHC(reg20, type = "HC1"))
-
-reg21 <- lm(ln90w10b ~ dism1990, data = aej_maindata)
-coeftest(reg21, vcov = vcovHC(reg21, type = "HC1"))
-
-reg22 <- lm(ln90b10w ~ dism1990, data = aej_maindata)
-coeftest(reg22, vcov = vcovHC(reg22, type = "HC1"))
-
-# Table 2, Panel 2 - IV regressions
-ivreg5 <- ivreg(ln90w90b ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg5, robust = TRUE)
-
-ivreg6 <- ivreg(ln10w10b ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg6, robust = TRUE)
-
-ivreg7 <- ivreg(ln90w10b ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg7, robust = TRUE)
-
-ivreg8 <- ivreg(ln90b10w ~ dism1990 | herf, data = aej_maindata)
-summary(ivreg8, robust = TRUE)
-
-# Table 2, Panel 2 (Subset condition)
-reg23 <- lm(ln90w90b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg23, vcov = vcovHC(reg23, type = "HC1"))
-
-reg24 <- lm(ln10w10b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg24, vcov = vcovHC(reg24, type = "HC1"))
-
-reg25 <- lm(ln90w10b ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg25, vcov = vcovHC(reg25, type = "HC1"))
-
-reg26 <- lm(ln90b10w ~ herf + lenper, data = aej_maindata, subset = closeness < -400)
-coeftest(reg26, vcov = vcovHC(reg26, type = "HC1"))
 ```
