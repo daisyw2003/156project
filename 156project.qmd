@@ -400,3 +400,183 @@ summary(model_povrate_w_count1920)
 summary(model_povrate_b_count1920)
 
 ```
+```{r}
+sapply(aej_maindata[, c("dism1990_binary", "lenper", "pop1990", "pctbk1990")], function(x) sum(is.na(x)))
+
+```
+
+```{r}
+
+# Define the binary treatment variable
+aej_maindata$dism1990_binary <- as.numeric(aej_maindata$dism1990 > median(aej_maindata$dism1990, na.rm = TRUE))
+
+# Propensity score model
+propensity_model <- glm(
+  dism1990_binary ~ lenper,
+  family = binomial,
+  data = aej_maindata
+)
+
+# Extract propensity scores
+aej_maindata$propensity_score <- predict(propensity_model, type = "response")
+
+
+# IPW weights
+aej_maindata$ipw_weights <- ifelse(
+  aej_maindata$dism1990_binary == 1,
+  1 / aej_maindata$propensity_score,
+  1 / (1 - aej_maindata$propensity_score)
+)
+
+# Check weight distribution
+summary(aej_maindata$ipw_weights)
+hist(aej_maindata$ipw_weights, main = "Distribution of IPW Weights", xlab = "IPW Weights")
+
+```
+
+
+```{r}
+# IPW-weighted regressions
+ipw_gini_w <- lm(lngini_w ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_gini_b <- lm(lngini_b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_povrate_w <- lm(povrate_w ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_povrate_b <- lm(povrate_b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+
+
+ipw_ln90w90b <- lm(ln90w90b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_ln10w10b <- lm(ln10w10b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_ln90w10b <- lm(ln90w10b ~ dism1990, weights = ipw_weights, data = aej_maindata)
+ipw_ln90b10w <- lm(ln90b10w ~ dism1990, weights = ipw_weights, data = aej_maindata)
+
+
+```
+
+```{r}
+
+library(stargazer)
+
+# Panel 1: Within-Race Inequality and Poverty
+stargazer(
+  ipw_gini_w, ipw_gini_b, ipw_povrate_w, ipw_povrate_b,
+  title = "Panel 1: IPW Estimates for Within-Race Inequality and Poverty",
+  type = "text",
+  column.labels = c("Gini (Whites)", "Gini (Blacks)", "Poverty (Whites)", "Poverty (Blacks)"),
+  digits = 3
+)
+
+# Panel 2: Between-Race Inequality
+stargazer(
+  ipw_ln90w90b, ipw_ln10w10b, ipw_ln90w10b, ipw_ln90b10w,
+  title = "Panel 2: IPW Estimates for Between-Race Inequality",
+  type = "text",
+  column.labels = c("90:90", "10:10", "90:10 (White:Black)", "90:10 (Black:White)"),
+  digits = 3
+)
+
+
+```
+
+## Estimators
+```{r}
+
+### Step 1: Propensity Score Model (IPW Part)
+# Define the binary treatment variable
+aej_maindata$dism1990_binary <- as.numeric(aej_maindata$dism1990 > median(aej_maindata$dism1990, na.rm = TRUE))
+
+# Estimate propensity scores using a logistic regression model
+propensity_model <- glm(
+  dism1990_binary ~ lenper, 
+  family = binomial(link = "logit"), 
+  data = aej_maindata
+)
+
+# Predict propensity scores
+aej_maindata$propensity_score <- predict(propensity_model, type = "response")
+
+
+
+# Step 2: Creating the estimates
+
+### Within race inequality
+# 1. Outcome regression models
+or_gini_w <- lm(lngini_w ~ dism1990 + lenper, data = aej_maindata)
+or_gini_b <- lm(lngini_b ~ dism1990 + lenper, data = aej_maindata)
+or_povrate_w <- lm(povrate_w ~ dism1990 + lenper, data = aej_maindata)
+or_povrate_b <- lm(povrate_b ~ dism1990 + lenper, data = aej_maindata)
+
+# 2. Predicted outcomes from OR models
+aej_maindata$or_pred_gini_w <- predict(or_gini_w)
+aej_maindata$or_pred_gini_b <- predict(or_gini_b)
+aej_maindata$or_pred_povrate_w <- predict(or_povrate_w)
+aej_maindata$or_pred_povrate_b <- predict(or_povrate_b)
+
+aej_maindata$or_pred_ln90w90b <- predict(or_ln90w90b)
+aej_maindata$or_pred_ln10w10b <- predict(or_ln10w10b)
+aej_maindata$or_pred_ln90w10b <- predict(or_ln90w10b)
+aej_maindata$or_pred_ln90b10w <- predict(or_ln90b10w)
+
+# 3. Doubly robust residuals
+aej_maindata$dr_gini_w <- aej_maindata$lngini_w + (aej_maindata$dism1990_binary / aej_maindata$propensity_score) * (aej_maindata$lngini_w - aej_maindata$or_pred_gini_w)
+aej_maindata$dr_gini_b <- aej_maindata$lngini_b + ((1 - aej_maindata$dism1990_binary) / (1 - aej_maindata$propensity_score)) * (aej_maindata$lngini_b - aej_maindata$or_pred_gini_b)
+
+# Repeat for other outcomes...
+aej_maindata$dr_povrate_w <- aej_maindata$povrate_w + (aej_maindata$dism1990_binary / aej_maindata$propensity_score) * (aej_maindata$povrate_w - aej_maindata$or_pred_povrate_w)
+aej_maindata$dr_povrate_b <- aej_maindata$povrate_b + ((1 - aej_maindata$dism1990_binary) / (1 - aej_maindata$propensity_score)) * (aej_maindata$povrate_b - aej_maindata$or_pred_povrate_b)
+
+# 4. DR-weighted regressions (stargazer-compatible)
+dr_gini_w <- lm(dr_gini_w ~ dism1990, data = aej_maindata)
+dr_gini_b <- lm(dr_gini_b ~ dism1990, data = aej_maindata)
+
+dr_povrate_w <- lm(dr_povrate_w ~ dism1990, data = aej_maindata)
+dr_povrate_b <- lm(dr_povrate_b ~ dism1990, data = aej_maindata)
+
+# Panel 1: Within-Race Inequality and Poverty
+stargazer(
+  dr_gini_w, dr_gini_b, dr_povrate_w, dr_povrate_b,
+  title = "Panel 1: Doubly Robust Estimates for Within-Race Inequality and Poverty",
+  type = "text",
+  column.labels = c("Gini (Whites)", "Gini (Blacks)", "Poverty (Whites)", "Poverty (Blacks)"),
+  digits = 3
+)
+
+
+### Between Race Inequalityy
+# 1. Outcome regression models
+
+or_ln90w90b <- lm(ln90w90b ~ dism1990 + lenper, data = aej_maindata)
+or_ln10w10b <- lm(ln10w10b ~ dism1990 + lenper, data = aej_maindata)
+or_ln90w10b <- lm(ln90w10b ~ dism1990 + lenper, data = aej_maindata)
+or_ln90b10w <- lm(ln90b10w ~ dism1990 + lenper, data = aej_maindata)
+
+# 2. DR residuals for between-race inequality outcomes
+aej_maindata$dr_ln90w90b <- aej_maindata$ln90w90b + 
+  (aej_maindata$dism1990_binary / aej_maindata$propensity_score) * 
+  (aej_maindata$ln90w90b - aej_maindata$or_pred_ln90w90b)
+
+aej_maindata$dr_ln10w10b <- aej_maindata$ln10w10b + 
+  (aej_maindata$dism1990_binary / aej_maindata$propensity_score) * 
+  (aej_maindata$ln10w10b - aej_maindata$or_pred_ln10w10b)
+
+aej_maindata$dr_ln90w10b <- aej_maindata$ln90w10b + 
+  (aej_maindata$dism1990_binary / aej_maindata$propensity_score) * 
+  (aej_maindata$ln90w10b - aej_maindata$or_pred_ln90w10b)
+
+aej_maindata$dr_ln90b10w <- aej_maindata$ln90b10w + 
+  ((1 - aej_maindata$dism1990_binary) / (1 - aej_maindata$propensity_score)) * 
+  (aej_maindata$ln90b10w - aej_maindata$or_pred_ln90b10w)
+
+# 3. DR-weighted regressions for between-race inequality
+dr_ln90w90b <- lm(dr_ln90w90b ~ dism1990, data = aej_maindata)
+dr_ln10w10b <- lm(dr_ln10w10b ~ dism1990, data = aej_maindata)
+dr_ln90w10b <- lm(dr_ln90w10b ~ dism1990, data = aej_maindata)
+dr_ln90b10w <- lm(dr_ln90b10w ~ dism1990, data = aej_maindata)
+
+# 4. Stargazer output for Panel 2
+stargazer(
+  dr_ln90w90b, dr_ln10w10b, dr_ln90w10b, dr_ln90b10w,
+  title = "Panel 2: Doubly Robust Estimates for Between-Race Inequality",
+  type = "text",
+  column.labels = c("90:90", "10:10", "90:10 (White:Black)", "90:10 (Black:White)"),
+  digits = 3
+)
+```
