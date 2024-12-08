@@ -1,0 +1,91 @@
+---
+title: "Stat 156 Summary Stats/Table A1"
+format: pdf
+editor: visual
+---
+
+```{r}
+# Load required libraries
+library(dplyr)
+library(broom)
+
+# Load the data
+data <- haven::read_dta("table_A1.dta")
+
+# Define the sample indicator and numeric variables
+sample_col <- "sample" # Assuming this is the binary column for In/Not In Sample
+numeric_vars <- names(data)[sapply(data, is.numeric) & names(data) != sample_col]
+
+# Function to calculate summary statistics and t-tests and includes constant variables- in order for the difference in means t-test to make sense
+calculate_summary <- function(data, variable, sample_col) {
+  group_stats <- data %>%
+    group_by(!!sym(sample_col)) %>%
+    summarize(
+      mean = mean(!!sym(variable), na.rm = TRUE),
+      se = sd(!!sym(variable), na.rm = TRUE) / sqrt(n()),
+      sd = sd(!!sym(variable), na.rm = TRUE),
+      median = median(!!sym(variable), na.rm = TRUE),
+      iqr = IQR(!!sym(variable), na.rm = TRUE)
+    )
+  
+  # Check if standard deviation is non-zero for both groups
+  if (any(group_stats$sd == 0 | is.na(group_stats$sd))) {
+    return(tibble(
+      Variable = variable,
+      `Mean (In Sample)` = NA,
+      `SE (In Sample)` = NA,
+      `Median (In Sample)` = NA,
+      `IQR (In Sample)` = NA,
+      `Mean (Not In Sample)` = NA,
+      `SE (Not In Sample)` = NA,
+      `Median (Not In Sample)` = NA,
+      `IQR (Not In Sample)` = NA,
+      `Difference in Means` = NA,
+      `P-value` = NA
+    ))
+  }
+# Calculate t-test  
+  t_test <- t.test(
+    data[[variable]][data[[sample_col]] == 1],
+    data[[variable]][data[[sample_col]] == 0]
+  )
+ #Output desired table  
+  tibble(
+    Variable = variable,
+    `Mean (In Sample)` = group_stats$mean[group_stats[[sample_col]] == 1],
+    `SE (In Sample)` = group_stats$se[group_stats[[sample_col]] == 1],
+    `Median (In Sample)` = group_stats$median[group_stats[[sample_col]] == 1],
+    `IQR (In Sample)` = group_stats$iqr[group_stats[[sample_col]] == 1],
+    `Mean (Not In Sample)` = group_stats$mean[group_stats[[sample_col]] == 0],
+    `SE (Not In Sample)` = group_stats$se[group_stats[[sample_col]] == 0],
+    `Median (Not In Sample)` = group_stats$median[group_stats[[sample_col]] == 0],
+    `IQR (Not In Sample)` = group_stats$iqr[group_stats[[sample_col]] == 0],
+    `Difference in Means` = t_test$estimate[1] - t_test$estimate[2],
+    `P-value` = t_test$p.value
+  )
+}
+
+# Re-run for all numeric variables
+summary_table <- purrr::map_dfr(numeric_vars, ~calculate_summary(data, .x, sample_col))
+
+# Print the summary table
+print(summary_table)
+
+# Optionally save to CSV
+write.csv(summary_table, "summary_table.csv", row.names = FALSE)
+
+```
+
+We replicate Table A (Mean Characteristics of Cities In and Out of Sample) from the paper.
+
+While our table isn't exactly identical to Table A from the paper, but the values- both means and p-values are very similar (at least to the 1st decimal place).
+
+The covariate means, overall look very balanced between the sampled and out-of-sample observations. For the few variables (percent black-1940 and Concentration index–1990) where the p-value is significant (at 5% level), the overall difference in means in our table are close to 0 (difference in mean of 0.1 for the concentration index, and -0.018 for percentage black 1940). Thus, overall, it seems that the observations/cities are pretty well-balanced between sample and not-in-sample observations.
+
+```{r}
+# Customize options
+library(xtable)
+latex_table <- xtable(data)
+print(latex_table, type = "latex", include.rownames = TRUE)
+
+```

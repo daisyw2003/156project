@@ -14,6 +14,7 @@ library(haven)
 library(sandwich)  # For robust standard errors
 library(AER)       # For ivreg
 library(sandwich)
+library(stargazer)
 
 table_A1 <- read_dta("table_A1.dta") 
 table_5 <- read_dta("table_5.dta")
@@ -70,9 +71,7 @@ $$
 
 Another important variable to be captured was the amount of segregation, which is captured by a dissimilarity index defined by:
 
-Index of dissimilarity $= \frac{1}{2}\sum^N_{i=1}|\frac{black_i}{black_{total}} - \frac{nonblack_i}{nonblack_{total}}|$
-
-where $i = 1 ... N$ is the array of census tracts in the area.
+Index of dissimilarity $= \frac{1}{2}\sum^N_{i=1}|\frac{black_i}{black_{total}} - \frac{nonblack_i}{nonblack_{total}}|$ where $i = 1 ... N$ is the array of census tracts in the area.
 
 With this setup, we can now assume that if RDI-induced segregation is randomly assigned, then we can capture the relationship between segregation and outcomes using a classic endogenous regressor affecting outcomes at the metropolitan statistical area (MSA) level
 
@@ -131,7 +130,6 @@ coeftest(reg13, vcov = vcovHC(reg13, type = "HC1"))
 
 reg14 <- lm(incseg ~ herf + lenper, data = aej_maindata)
 coeftest(reg14, vcov = vcovHC(reg14, type = "HC1"))
-
 ```
 
 Table 2—The Effects of Segregation on Poverty and Inequality among Blacks and Whites
@@ -400,6 +398,7 @@ summary(model_povrate_w_count1920)
 summary(model_povrate_b_count1920)
 
 ```
+
 ```{r}
 sapply(aej_maindata[, c("dism1990_binary", "lenper", "pop1990", "pctbk1990")], function(x) sum(is.na(x)))
 
@@ -433,7 +432,6 @@ summary(aej_maindata$ipw_weights)
 hist(aej_maindata$ipw_weights, main = "Distribution of IPW Weights", xlab = "IPW Weights")
 
 ```
-
 
 ```{r}
 # IPW-weighted regressions
@@ -477,6 +475,7 @@ stargazer(
 ```
 
 ## Estimators
+
 ```{r}
 
 ### Step 1: Propensity Score Model (IPW Part)
