@@ -243,48 +243,8 @@ The results of this robustness check show that the estimated effects of segregat
 
 These findings provide further evidence that RDI is primarily impacting poverty and inequality through segregation and not through some other channel. The results are stable even after accounting for differences in city characteristics present at the beginning of the Great Migration before segregation could have noticeable effects on human capital or city growth.
 
-```{r echo=FALSE}
-# Define variables
-dependent_vars <- c("lngini_w", "lngini_b", "povrate_w", "povrate_b")
-control_sets <- list(
-  "count1920" = c("lenper", "count1920"),
-  "black1920" = c("lenper", "black1920"),
-  "ctyliterate1920" = c("lenper", "ctyliterate1920"),
-  "ctymanuf_wkrs1920" = c("lenper", "ctymanuf_wkrs1920"),
-  "lfp1920" = c("lenper", "lfp1920"),
-  "herfscore" = c("lenper", "herfscore")
-)
 
-# Instrumental variable
-instrument <- "herf"
-
-# Store models
-models <- list()
-
-for (dep_var in dependent_vars) {
-  for (control_name in names(control_sets)) {
-    controls <- control_sets[[control_name]]
-    control_formula <- paste(controls, collapse = " + ")
-    
-    # Define formula
-    formula <- as.formula(
-      paste(dep_var, "~ dism1990 +", control_formula, "|", control_formula, "+", instrument)
-    )
-    
-    
-    model <- ivreg(formula, data = aej_maindata)
-    model_name <- paste(dep_var, control_name, sep = "_")
-    models[[model_name]] <- model
-    
-    print(model)
-    summary(models[[model_name]])
-  }
-}
-
-
-```
-
-```{r echo=FALSE}
+```{r}
 # Dependent variable: lngini_w
 model_lngini_w_count1920 <- ivreg(
   lngini_w ~ dism1990 + lenper + count1920 | lenper + count1920 + herf,
@@ -447,6 +407,56 @@ ipw_ln90w10b <- lm(ln90w10b ~ dism1990, weights = ipw_weights, data = aej_mainda
 ipw_ln90b10w <- lm(ln90b10w ~ dism1990, weights = ipw_weights, data = aej_maindata)
 
 
+iv_ipw_gini_w <- ivreg(
+  formula = lngini_w ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+iv_ipw_gini_b <- ivreg(
+  formula = lngini_b ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+iv_ipw_povrate_w <- ivreg(
+  formula = povrate_w ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+iv_ipw_povrate_b <- ivreg(
+  formula = povrate_b ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+iv_ipw_ln90w90b <- ivreg(
+  formula = ln90w90b ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+iv_ipw_ln10w10b <- ivreg(
+  formula = ln10w10b ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+iv_ipw_ln90w10b <- ivreg(
+  formula = ln90w10b ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+iv_ipw_ln90b10w <- ivreg(
+  formula = ln90b10w ~ dism1990 | herf, 
+  weights = ipw_weights,
+  data = aej_maindata
+)
+
+
+
 ```
 
 ```{r}
@@ -471,7 +481,23 @@ stargazer(
   digits = 3
 )
 
+# Panel 3: Within-Race Inequality and Poverty
+stargazer(
+  iv_ipw_gini_w, iv_ipw_gini_b, iv_ipw_povrate_w, iv_ipw_povrate_b,
+  title = "Panel 3: 2sls IPW Estimates for Within-Race Inequality and Poverty",
+  type = "text",
+  column.labels = c("Gini (Whites)", "Gini (Blacks)", "Poverty (Whites)", "Poverty (Blacks)"),
+  digits = 3
+)
 
+# Panel 3: Between-Race Inequality
+stargazer(
+  iv_ipw_ln90w90b, iv_ipw_ln10w10b, iv_ipw_ln90w10b, iv_ipw_ln90b10w,
+  title = "Panel 4: 2sls IPW Estimates for Between-Race Inequality",
+  type = "text",
+  column.labels = c("90:90", "10:10", "90:10 (White:Black)", "90:10 (Black:White)"),
+  digits = 3
+)
 ```
 
 ## Estimators
@@ -523,20 +549,17 @@ aej_maindata$dr_povrate_w <- aej_maindata$povrate_w + (aej_maindata$dism1990_bin
 aej_maindata$dr_povrate_b <- aej_maindata$povrate_b + ((1 - aej_maindata$dism1990_binary) / (1 - aej_maindata$propensity_score)) * (aej_maindata$povrate_b - aej_maindata$or_pred_povrate_b)
 
 # 4. DR-weighted regressions (stargazer-compatible)
-dr_gini_w <- lm(dr_gini_w ~ dism1990, data = aej_maindata)
-dr_gini_b <- lm(dr_gini_b ~ dism1990, data = aej_maindata)
+iv_dr_gini_w <- ivreg(dr_gini_w ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_gini_w, vcov = vcovHC(iv_dr_gini_w, type = "HC1"))  # Robust SE
 
-dr_povrate_w <- lm(dr_povrate_w ~ dism1990, data = aej_maindata)
-dr_povrate_b <- lm(dr_povrate_b ~ dism1990, data = aej_maindata)
+iv_dr_gini_b <- ivreg(dr_gini_b ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_gini_b, vcov = vcovHC(iv_dr_gini_b, type = "HC1"))
 
-# Panel 1: Within-Race Inequality and Poverty
-stargazer(
-  dr_gini_w, dr_gini_b, dr_povrate_w, dr_povrate_b,
-  title = "Panel 1: Doubly Robust Estimates for Within-Race Inequality and Poverty",
-  type = "text",
-  column.labels = c("Gini (Whites)", "Gini (Blacks)", "Poverty (Whites)", "Poverty (Blacks)"),
-  digits = 3
-)
+iv_dr_povrate_w <- ivreg(dr_povrate_w ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_povrate_w, vcov = vcovHC(iv_dr_povrate_w, type = "HC1"))
+
+iv_dr_povrate_b <- ivreg(dr_povrate_b ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_povrate_b, vcov = vcovHC(iv_dr_povrate_b, type = "HC1"))
 
 
 ### Between Race Inequalityy
@@ -565,10 +588,8 @@ aej_maindata$dr_ln90b10w <- aej_maindata$ln90b10w +
   (aej_maindata$ln90b10w - aej_maindata$or_pred_ln90b10w)
 
 # 3. DR-weighted regressions for between-race inequality
-dr_ln90w90b <- lm(dr_ln90w90b ~ dism1990, data = aej_maindata)
-dr_ln10w10b <- lm(dr_ln10w10b ~ dism1990, data = aej_maindata)
-dr_ln90w10b <- lm(dr_ln90w10b ~ dism1990, data = aej_maindata)
-dr_ln90b10w <- lm(dr_ln90b10w ~ dism1990, data = aej_maindata)
+iv_dr_ln90w90b <- ivreg(dr_ln90w90b ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_ln90w90b, vcov = vcovHC(iv_dr_ln90w90b, type = "HC1"))
 
 # 4. Stargazer output for Panel 2
 stargazer(
@@ -578,4 +599,12 @@ stargazer(
   column.labels = c("90:90", "10:10", "90:10 (White:Black)", "90:10 (Black:White)"),
   digits = 3
 )
+iv_dr_ln10w10b <- ivreg(dr_ln10w10b ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_ln10w10b, vcov = vcovHC(iv_dr_ln10w10b, type = "HC1"))
+
+iv_dr_ln90w10b <- ivreg(dr_ln90w10b ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_ln90w10b, vcov = vcovHC(iv_dr_ln90w10b, type = "HC1"))
+
+iv_dr_ln90b10w <- ivreg(dr_ln90b10w ~ dism1990 | herf, data = aej_maindata)
+summary(iv_dr_ln90b10w, vcov = vcovHC(iv_dr_ln90b10w, type = "HC1"))
 ```
