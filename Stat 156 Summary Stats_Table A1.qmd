@@ -83,9 +83,24 @@ While our table isn't exactly identical to Table A from the paper, but the value
 The covariate means, overall look very balanced between the sampled and out-of-sample observations. For the few variables (percent black-1940 and Concentration index–1990) where the p-value is significant (at 5% level), the overall difference in means in our table are close to 0 (difference in mean of 0.1 for the concentration index, and -0.018 for percentage black 1940). Thus, overall, it seems that the observations/cities are pretty well-balanced between sample and not-in-sample observations.
 
 ```{r}
-# Customize options
 library(xtable)
-latex_table <- xtable(data)
-print(latex_table, type = "latex", include.rownames = TRUE)
 
+columns <- c(
+  "area1900", "area1940", "area1970", "area1990",
+  "isol1890", "isol1940t", "isol1940w", "isol1970", "isol1990",
+  "dism1890", "dism1940t", "dism1940w", "dism1970", "dism1990", 
+  "pctbk1890", "pctbk1940", "pctbk1970", "pctbk1990",
+  "pop1890", "pop1940", "pop1970", "pop1990", 
+  "ward1890", "ward1940", "tract1940", "tract1970", "tract1990",
+  "passpc", "bsvtsh", "revig62", "ngov62", "medinc", "incseg", "bincseg", "meduc", "singmom", "ttwork", "educex", "gum", "cluster", "concent", "central", "pwdens"
+ )
+table_we_want <- summary_table[summary_table$Variable %in% columns,]
+table_we_want <- table_we_want[order(table_we_want$Variable), ]
+#table_we_want
+print(xtable(table_we_want), type = "latex")
+```
+
+```{python}
+import pandas as pd
+pd.read_csv('summary_table.csv')
 ```
